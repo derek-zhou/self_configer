@@ -1,5 +1,5 @@
 {application, self_configer,
- [{description, "An OTP library to config any OTP application"},
+ [{description, "An OTP library to persist user configuration to local files"},
   {vsn, "0.1.0"},
   {registered, []},
   {applications,
@@ -10,5 +10,5 @@
   {modules, []},
 
   {licenses, ["Apache 2.0"]},
-  {links, []}
+  {links, [{"Github", "https://github.com/derek-zhou/self_configer"}]}
  ]}.
