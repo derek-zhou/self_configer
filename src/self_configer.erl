@@ -68,7 +68,7 @@ init([]) ->
 	    ?LOG_ERROR("Config dir ~ts is not found or not a directory", [Dir]),
 	    error("Configer failed to boot");
 	true -> ok
-    end,    
+    end,
     {ok, App} = application:get_application(),
     Path = lists:flatten([Dir, $/, atom_to_list(App), ".config"]),
     Data = load(Path),
