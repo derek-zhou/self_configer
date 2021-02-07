@@ -6,6 +6,8 @@
 -module(self_configer).
 -behaviour(gen_statem).
 
+-include_lib("kernel/include/logger.hrl").
+
 %% apis
 -export([child_spec/1, start_link/1, set_env/3, unset_env/2]).
 
@@ -17,7 +19,7 @@
 
 %% the data record to hold server state
 -record(configer_data, { path :: string(),
-			 map :: map() }).
+			 map = #{} :: map() }).
 
 %% apis
 start_link([]) ->
@@ -27,7 +29,7 @@ start_link([{name, Name}]) ->
 
 child_spec(Args) ->
     #{id => ?MODULE,
-      start => {?MODULE, start_link, Args},
+      start => {?MODULE, start_link, [Args]},
       type => worker}.
 
 %% set_env to the Configer instance, return the Configer instance for chainning
@@ -61,7 +63,13 @@ code_change(_Vsn, State, Data, _Extra) -> {ok, State, Data}.
 
 init([]) ->
     Dir = default_dir(),
-    App = application:get_application(),
+    case filelib:is_dir(Dir) of
+	false ->
+	    ?LOG_ERROR("Config dir ~ts is not found or not a directory", [Dir]),
+	    error("Configer failed to boot");
+	true -> ok
+    end,    
+    {ok, App} = application:get_application(),
     Path = lists:flatten([Dir, $/, atom_to_list(App), ".config"]),
     Data = load(Path),
     ok = apply_to(App, Data),
@@ -97,7 +105,7 @@ default_dir() ->
     end.
 
 update(Par, Val, Data = #configer_data{map = Map}) ->
-    Data#configer_data{map = maps:update(Par, Val, Map)}.
+    Data#configer_data{map = maps:put(Par, Val, Map)}.
 
 remove(Par, Data = #configer_data{map = Map}) ->
     Data#configer_data{map = maps:remove(Par, Map)}.
@@ -106,20 +114,21 @@ apply_to(App, #configer_data{map = Map}) ->
     maps:fold(fun (Par, Val, _) -> application:set_env(App, Par, Val) end, ok, Map).
 
 load(Path) ->
-    Plist = case filelib:is_file(Path) of
-		false -> [];
-		true ->
-		    {ok, Terms} = file:consult(Path),
-		    Terms
-	    end,
-    #configer_data{path = Path, map = maps:from_list(Plist)}.
+    case filelib:is_file(Path) of
+	false ->
+	    ?LOG_WARNING("The config file ~ts is not found", [Path]),
+	    #configer_data{path = Path};
+	true ->
+	    {ok, Plist} = file:consult(Path),
+	    #configer_data{path = Path, map = maps:from_list(Plist)}
+    end.
 
 flush(#configer_data{path = Path, map = Map}) ->
     %% ascending order. maps:to_list/1 has arbitrary order
     Plist = lists:map(fun (Key) -> {Key, maps:get(Key, Map)} end,
 		      lists:sort(maps:keys(Map))),
-    Format = fun(Term) -> io_lib:format("~tp.~n", [Term]) end,
+    Format = fun(Term) -> unicode:characters_to_binary(io_lib:format("~tp.~n", [Term])) end,
     %% write to a temp file and rename after the write
     Temp = Path ++ ".tmp",
-    ok = file:write(Temp, lists:map(Format, Plist)),
+    ok = file:write_file(Temp, lists:map(Format, Plist)),
     ok = file:rename(Temp, Path).
