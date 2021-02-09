@@ -100,7 +100,7 @@ dirty(state_timeout, timeout, Data) ->
 
 default_dir() ->
     case application:get_env(?MODULE, config_dir) of
-	undefined -> [os:getenv("HOME"), "/.", atom_to_list(?MODULE)];
+	undefined -> [os:getenv("HOME"), "/.config/", atom_to_list(?MODULE)];
 	{ok, Dir} -> Dir
     end.
 
@@ -129,6 +129,6 @@ flush(#configer_data{path = Path, map = Map}) ->
 		      lists:sort(maps:keys(Map))),
     Format = fun(Term) -> unicode:characters_to_binary(io_lib:format("~tp.~n", [Term])) end,
     %% write to a temp file and rename after the write
-    Temp = Path ++ ".tmp",
+    Temp = Path ++ "~",
     ok = file:write_file(Temp, lists:map(Format, Plist)),
     ok = file:rename(Temp, Path).

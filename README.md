@@ -42,7 +42,7 @@ init([]) ->
 
 Each application should have its own configer instance, and must be named differently to avoid conflict. The instance should be started before any other processes that need to be confiured.
 
-The default configuration dir is `$HOME/.self_configer`, and can be changed by the `config_dir` key in the `self_configer` application's env. This is the only configuration need to be done. You also need to make sure the dir exists before the application start.
+The default configuration dir is `$HOME/.config/self_configer`, and can be changed by the `config_dir` key in the `self_configer` application's env. This is the only configuration can be done. You also need to make sure the dir exists before the application start.
 
 ## Usage
 
