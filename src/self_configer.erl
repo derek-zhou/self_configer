@@ -35,28 +35,14 @@ child_spec(Args) ->
 %% set_env to the Configer instance, return the Configer instance for chainning
 -spec set_env(atom(), atom(), term()) -> atom().
 set_env(Configer, Par, Val) ->
-    application:set_env(app_of(Configer), Par, Val),
-    gen_statem:cast(Configer, {set_env, Par, Val}),
+    Configer ! {set_env, Par, Val},
     Configer.
 
 %% unset_env to the Configer instance, return the Configer instance for chainning
 -spec unset_env(atom(), atom()) -> atom().
 unset_env(Configer, Par) ->
-    application:unset_env(app_of(Configer), Par),
-    gen_statem:cast(Configer, {unset_env, Par}),
+    Configer ! {unset_env, Par},
     Configer.
-
-app_of(Configer) ->
-    case whereis(Configer) of
-	undefined ->
-	    error("Configer not found.", [Configer]);
-	Pid  ->
-	    case application:get_application(Pid) of
-		undefined ->
-		    error("Application not found.", [Configer]);
-		App -> App
-	    end
-    end.
 
 %% Mandatory callback functions
 code_change(_Vsn, State, Data, _Extra) -> {ok, State, Data}.
@@ -82,19 +68,26 @@ callback_mode() -> state_functions.
 
 %% state callbacks
 
-clean(cast, {set_env, Par, Val}, Data) ->
+clean(info, {set_env, Par, Val}, Data) ->
+    {ok, App} = application:get_application(),
+    application:set_env(App, Par, Val),
     {next_state, dirty, update(Par, Val, Data), [{state_timeout, 5000, timeout}]};
-clean(cast, {unset_env, Par}, Data) ->
+clean(info, {unset_env, Par}, Data) ->
+    {ok, App} = application:get_application(),
+    application:unset_env(App, Par),
     {next_state, dirty, remove(Par, Data), [{state_timeout, 5000, timeout}]}.
 
-dirty(cast, {set_env, Par, Val}, Data) ->
+dirty(info, {set_env, Par, Val}, Data) ->
+    {ok, App} = application:get_application(),
+    application:set_env(App, Par, Val),
     {keep_state, update(Par, Val, Data)};
-dirty(cast, {unset_env, Par}, Data) ->
+dirty(info, {unset_env, Par}, Data) ->
+    {ok, App} = application:get_application(),
+    application:unset_env(App, Par),
     {keep_state, remove(Par, Data)};
 dirty(state_timeout, timeout, Data) ->
     ok = flush(Data),
     {next_state, clean, Data}.
-
 
 %% private functions
 
