@@ -35,13 +35,13 @@ child_spec(Args) ->
 %% set_env to the Configer instance, return the Configer instance for chainning
 -spec set_env(atom(), atom(), term()) -> atom().
 set_env(Configer, Par, Val) ->
-    Configer ! {set_env, Par, Val},
+    gen_statem:call(Configer, {set_env, Par, Val}),
     Configer.
 
 %% unset_env to the Configer instance, return the Configer instance for chainning
 -spec unset_env(atom(), atom()) -> atom().
 unset_env(Configer, Par) ->
-    Configer ! {unset_env, Par},
+    gen_statem:call(Configer, {unset_env, Par}),
     Configer.
 
 %% Mandatory callback functions
@@ -52,14 +52,14 @@ init([]) ->
     case filelib:is_dir(Dir) of
 	false ->
 	    ?LOG_ERROR("Config dir ~ts is not found or not a directory", [Dir]),
-	    error("Configer failed to boot");
-	true -> ok
-    end,
-    {ok, App} = application:get_application(),
-    Path = lists:flatten([Dir, $/, atom_to_list(App), ".config"]),
-    Data = load(Path),
-    ok = apply_to(App, Data),
-    {ok, clean, Data}.
+	    {stop, "Configer failed to boot"};
+	true ->
+	    {ok, App} = application:get_application(),
+	    Path = lists:flatten([Dir, $/, atom_to_list(App), ".config"]),
+	    Data = load(Path),
+	    ok = apply_to(App, Data),
+	    {ok, clean, Data}
+    end.
 
 terminate(_Reason, clean, _Data) -> ok;
 terminate(_Reason, dirty, Data) -> flush(Data).
@@ -68,20 +68,20 @@ callback_mode() -> state_functions.
 
 %% state callbacks
 
-clean(info, {set_env, Par, Val}, Data) ->
+clean({call, _From}, {set_env, Par, Val}, Data) ->
     {ok, App} = application:get_application(),
     application:set_env(App, Par, Val),
     {next_state, dirty, update(Par, Val, Data), [{state_timeout, 5000, timeout}]};
-clean(info, {unset_env, Par}, Data) ->
+clean({call, _From}, {unset_env, Par}, Data) ->
     {ok, App} = application:get_application(),
     application:unset_env(App, Par),
     {next_state, dirty, remove(Par, Data), [{state_timeout, 5000, timeout}]}.
 
-dirty(info, {set_env, Par, Val}, Data) ->
+dirty({call, _From}, {set_env, Par, Val}, Data) ->
     {ok, App} = application:get_application(),
     application:set_env(App, Par, Val),
     {keep_state, update(Par, Val, Data)};
-dirty(info, {unset_env, Par}, Data) ->
+dirty({call, _From}, {unset_env, Par}, Data) ->
     {ok, App} = application:get_application(),
     application:unset_env(App, Par),
     {keep_state, remove(Par, Data)};

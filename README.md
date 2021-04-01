@@ -1,7 +1,9 @@
 self_configer
 =====
 
-Self configer is a erlang library that configure an OTP application with a flat file residing outside the OTP application structure. In many circustances application can change it's configuration, possibly from user inputs, and we need to persist the configuration. `self_configer` does exactly that. You read application environment using `application:get_env/1` as usual; however when you want to change anything, you use `self_configer:set_env/3` instead of `application:set_env/3`, and self_configer will take care of writing to the application environment, persist to a flat file, loading the flat file on boot automatically. 
+Self configer is an Erlang library that configures an OTP application with a flat file residing outside the OTP application structure. In many circustances applications can change their configuration, possibly from user inputs, and we need to persist the configuration. If you can use a database that's fine; however sometimes we don't have a database. `self_configer` fills this void.
+
+You read application environment using `application:get_env/1` as usual; however when you want to change anything, you use `self_configer:set_env/3` instead of `application:set_env/3`, and self_configer will take care of writing to the application environment, persist to a flat file, loading the flat file on boot automatically. 
 
 ## Installation
 
@@ -64,8 +66,8 @@ MyApp.Configer
 
 ```
 
-The library will call `application:set_env/3` and `application:unset_env/2` for you so the runtime application config will be changed, and the configer instance will persist to a disk file `Config_dir/Application.config` in the background every 5 seconds when there are dirty data or on shutdown. The file is in erlang term file format so you can read, but any editting could be overwritten by the running allication. 
+The library will call `application:set_env/3` and `application:unset_env/2` for you so the runtime application config will be changed, and the configer instance will persist to a disk file `Config_dir/Application.config` in the background every 5 seconds when there are dirty data or on shutdown. The file is in erlang term file format so you can read, but any editing would be overwritten by the running appliication. 
 
-On next bootup, the persisted configuration will be applied on top of your build time or release run time application environment. `self_configer` write to a temp file first then do a rename afterwards, so the changes of damaged file content is minimized.
+On next bootup, the persisted configuration will be applied on top of your build time or release run time application environment. `self_configer` write to a temp file first then do a rename afterwards, so the chance of a damaged file is minimized.
 
 
