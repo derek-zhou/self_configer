@@ -19,6 +19,7 @@
 
 %% the data record to hold server state
 -record(configer_data, { path :: string(),
+			 app :: atom(),
 			 map = #{} :: map() }).
 
 %% apis
@@ -58,7 +59,7 @@ init([]) ->
 	    Path = lists:flatten([Dir, $/, atom_to_list(App), ".config"]),
 	    Data = load(Path),
 	    ok = apply_to(App, Data),
-	    {ok, clean, Data}
+	    {ok, clean, Data#configer_data{app = App}}
     end.
 
 terminate(_Reason, clean, _Data) -> ok;
@@ -68,23 +69,23 @@ callback_mode() -> state_functions.
 
 %% state callbacks
 
-clean({call, From}, {set_env, Par, Val}, Data) ->
-    {ok, App} = application:get_application(),
+clean({call, From}, {set_env, Par, Val},
+      #configer_data{app = App} = Data) ->
     application:set_env(App, Par, Val),
     {next_state, dirty, update(Par, Val, Data),
      [{reply, From, ok}, {state_timeout, 5000, timeout}]};
-clean({call, From}, {unset_env, Par}, Data) ->
-    {ok, App} = application:get_application(),
+clean({call, From}, {unset_env, Par},
+      #configer_data{app = App} = Data) ->
     application:unset_env(App, Par),
     {next_state, dirty, remove(Par, Data),
      [{reply, From, ok}, {state_timeout, 5000, timeout}]}.
 
-dirty({call, From}, {set_env, Par, Val}, Data) ->
-    {ok, App} = application:get_application(),
+dirty({call, From}, {set_env, Par, Val},
+      #configer_data{app = App} = Data) ->
     application:set_env(App, Par, Val),
     {keep_state, update(Par, Val, Data), [{reply, From, ok}]};
-dirty({call, From}, {unset_env, Par}, Data) ->
-    {ok, App} = application:get_application(),
+dirty({call, From}, {unset_env, Par},
+      #configer_data{app = App} = Data) ->
     application:unset_env(App, Par),
     {keep_state, remove(Par, Data), [{reply, From, ok}]};
 dirty(state_timeout, timeout, Data) ->
